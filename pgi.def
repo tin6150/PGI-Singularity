@@ -1,0 +1,43 @@
+Bootstrap: docker
+From: centos:7
+
+%post
+    yum groupinstall -y "Development tools"
+   
+    curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
+
+    tar xpfz downloader.php?file=pgi-community-linux-x64
+    
+    export PGI_SILENT=true
+    export PGI_ACCEPT_EULA=accept
+    export PG_INSTALL_DIR=/opt/pgi
+    export PGI_INSTALL_TYPE=single
+    export PGI_INSTALL_JAVA=true
+    export PGI_INSTALL_MPI=true
+    export PGI_MPI_GPU_SUPPORT=true
+    ./install
+
+    
+%environment
+    export PGI=/opt/pgi
+    export PATH=/opt/pgi/linux86-64/19.4/bin:$PATH
+    export MANPATH=$MANPATH:/opt/pgi/linux86-64/19.4/man
+    export LM_LICENSE_FILE=$LM_LICENSE_FILE:/opt/pgi/license.dat
+
+%runscript
+    pgcc $@
+
+%help
+    Container containing PGI compilers
+    
+    Usage:
+
+        singularity exec <singularity image> <command> <args>
+
+    PGI commands include pgf77, pgfortran, pgcc, pgc++, pgdbg, and pgprof.
+    When using a PGI compiler, it is recommended to use statically link the PGI librarires using the -Bstatic_pgi command flag.
+
+    Example:
+
+        singularity exec <singularity image> pgcc -Bstatic_pgi <source.c>
+
