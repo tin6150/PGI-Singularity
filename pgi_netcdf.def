@@ -1,18 +1,14 @@
 Bootstrap: docker
 From: centos:7
 
-%files
-    /root/pgilinux-2019-194-x86-64.tar.gz pgilinux-2019-194-x86-64.tar.gz
-
 %post
     yum groupinstall -y "Development tools"
     yum install -y wget
   
-    #curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
+    curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
 
-    #tar xpfz downloader.php?file=pgi-community-linux-x64
-    tar xpfz pgilinux-2019-194-x86-64.tar.gz    
-
+    tar xpfz downloader.php?file=pgi-community-linux-x64
+    
     export PGI_SILENT=true
     export PGI_ACCEPT_EULA=accept
     export PG_INSTALL_DIR=/opt/pgi
