@@ -3,7 +3,9 @@ From: centos:7
 
 %post
     yum groupinstall -y "Development tools"
-    yum install -y wget
+    yum install -y wget which  csh tcsh zsh  vim  bc tree 
+    # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
+    # no fish shell yet in centos7?
   
     curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
 
@@ -37,7 +39,11 @@ From: centos:7
     make install
     cd .. 
 
-    
+		# container constructed from .def may not need this
+    # but i need it now for interactive compile of cmaq
+		echo "tin:x:43143:100:tin:/home/tin:/bin/bash" >> /etc/passwd
+	  pwconv
+		chown 43143 /opt
     
 %environment
     export PGI=/opt/pgi
