@@ -3,13 +3,18 @@ From: centos:7
 
 %post
     yum groupinstall -y "Development tools"
-    yum install -y wget which  csh tcsh zsh  vim  bc tree 
+    yum install -y wget which  csh tcsh zsh  cvs vim  bc tree 
     # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
     # no fish shell yet in centos7?
+
+	  mkdir /Downloads  ##
+	  cd    /Downloads  ##
   
     curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
+    mv downloader.php?file=pgi-community-linux-x64 pgi.tgz   # this is in /
 
-    tar xpfz downloader.php?file=pgi-community-linux-x64
+    #tar xpfz downloader.php?file=pgi-community-linux-x64
+    tar xpfz pgi.tgz
     
     export PGI_SILENT=true
     export PGI_ACCEPT_EULA=accept
@@ -23,6 +28,7 @@ From: centos:7
     
     yum install -y libcurl-devel zlib-devel
 
+    # these are in /
     wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.21/src/hdf5-1.8.21.tar.gz
     tar xzf hdf5-1.8.21.tar.gz
     cd hdf5-1.8.21
@@ -35,15 +41,30 @@ From: centos:7
     tar -zxf v4.7.0.tar.gz
     cd netcdf-c-4.7.0
     ./configure --enable-remote-fortran-bootstrap
+    # ./configure --enable-remote-fortran-bootstrap --prefix=/opt
     make
     make install
     cd .. 
+
+    ##  Q for Ryan.  anything for libpnetcd.a ?  parallel version?
+    ## sure there is fortran version?  dont see a libnetcdff.a 
 
 		# container constructed from .def may not need this
     # but i need it now for interactive compile of cmaq
 		echo "tin:x:43143:100:tin:/home/tin:/bin/bash" >> /etc/passwd
 	  pwconv
-		chown 43143 /opt
+		chown -R 43143 /Downloads
+		chown    43143 /opt
+		mkdir -p /opt/CMAS4.5.1/rel
+		chown -R 43143 /opt/CMAS4.5.1
+		BASEDIR=/home/tin/tin-gh/cmaq/ioapi/ioapi  # source dir
+		#mkdir ${BASEDIR}/Linux4   #in git repo now
+		mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3
+    # lot of messy work to get source code in right place, then compile
+    # may now have the right Makefile in my home dir/git repo, so maybe can git pull that for use with container?
+    # there is still the issue of Linux4 (mint) vs Linux3 (centos)...
+    # may not want to overwrite cmaq.img (from 0721e) once compile inside image works...
+		
     
 %environment
     export PGI=/opt/pgi
