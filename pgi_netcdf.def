@@ -47,6 +47,10 @@ From: centos:7
     make
     make install
 
+    wget https://github.com/Unidata/netcdf-fortran/archive/v4.4.5.tar.gz
+		# depends on netcdf-c  4.6.2 ...
+		CC=pgcc FC=pgf95 ./configure --prefix=/opt
+
     cd .. 
 
     ##  Q for Ryan.  anything for libpnetcd.a ?  p = parallel version?
@@ -74,6 +78,8 @@ From: centos:7
     export PATH=/opt/pgi/linux86-64/19.4/bin:$PATH
     export MANPATH=$MANPATH:/opt/pgi/linux86-64/19.4/man
     export LM_LICENSE_FILE=$LM_LICENSE_FILE:/opt/pgi/license.dat
+		export LD_LIBRARY_PATH=/opt/pgi/lib:$LD_LIBRARY_PATH
+		export CC=pgcc FC=pgf90 # pgc++ ...
 
 %runscript
     #pgcc $@
