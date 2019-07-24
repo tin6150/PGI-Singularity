@@ -41,13 +41,16 @@ From: centos:7
     tar -zxf v4.7.0.tar.gz
     cd netcdf-c-4.7.0
     ./configure --enable-remote-fortran-bootstrap
-    # ./configure --enable-remote-fortran-bootstrap --prefix=/opt
+    # ./configure --enable-remote-fortran-bootstrap --prefix=/opt  --enable-separate-fortran
+    # it creates /opt/lib/libnetcdf.a... so better in /usr/local
+    # --enable-separate-fortran ## still dont see libnetcdff.a :(
     make
     make install
+
     cd .. 
 
-    ##  Q for Ryan.  anything for libpnetcd.a ?  parallel version?
-    ## sure there is fortran version?  dont see a libnetcdff.a 
+    ##  Q for Ryan.  anything for libpnetcd.a ?  p = parallel version?
+    ## sure there is fortran version?  dont see a libnetcdff.a  extra f ... 
 
 		# container constructed from .def may not need this
     # but i need it now for interactive compile of cmaq
@@ -73,7 +76,8 @@ From: centos:7
     export LM_LICENSE_FILE=$LM_LICENSE_FILE:/opt/pgi/license.dat
 
 %runscript
-    pgcc $@
+    #pgcc $@
+    pgf90 $@
 
 %help
     Container containing PGI compilers
