@@ -30,6 +30,18 @@ Starting with version 3.6.2, another method of building the netCDF
 Fortran libraries becomes available. With the
 --enable-separate-fortran option to configure, the user can specify
 that the C library should not contain the Fortran functions. In these
-cases an additional library, libnetcdff.a (note the extra ``f'') will
-be built. This library contains the Fortran functions.
+cases an additional library, libnetcdff.a (note the extra ''f'') will
+be built. This library contains the Fortran functions.   
+
+
+
+DOCKER
+======
+
+if decide to build docker container first, this is a good reference:
+https://hub.docker.com/r/johntfoster/netcdf/dockerfile
+
+the layer approach would safe time in build time during dev cycles.
+also it should allow for binary name of container or alias to execute exactly one of pgc++, pgf90, etc.
+skirting the singularity problem.
 
