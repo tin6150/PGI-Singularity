@@ -1,6 +1,8 @@
 Bootstrap: docker
 From: centos:7
 
+# cmaq.def, compiled lib use pgf90, xref db2e9de
+
 %post
     yum groupinstall -y "Development tools"
     yum install -y wget which  csh tcsh zsh  cvs vim  bc tree  
@@ -8,7 +10,8 @@ From: centos:7
     # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
     # no fish shell yet in centos7?
 
-	touch "_ROOT_DIR_OF_CONTAINER_" ##
+	touch "/_ROOT_DIR_OF_CONTAINER_" ##
+	touch "_CURRENT_DIR_CONTAINER_BUILD" ##
 	mkdir /Downloads  ##
 	cd    /Downloads  ##
   
