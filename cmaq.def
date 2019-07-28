@@ -1,0 +1,165 @@
+Bootstrap: docker
+From: centos:7
+
+%post
+    yum groupinstall -y "Development tools"
+    yum install -y wget which  csh tcsh zsh  cvs vim  bc tree  
+	yum install -y tmux #screen
+    # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
+    # no fish shell yet in centos7?
+
+	touch "_ROOT_DIR_OF_CONTAINER_" ##
+	mkdir /Downloads  ##
+	cd    /Downloads  ##
+  
+    curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
+    mv downloader.php?file=pgi-community-linux-x64 pgi.tgz   # this was in /
+
+    #tar xpfz downloader.php?file=pgi-community-linux-x64
+    tar xpfz pgi.tgz
+    
+    export PGI_SILENT=true
+    export PGI_ACCEPT_EULA=accept
+    export PG_INSTALL_DIR=/opt/pgi
+    export PGI_INSTALL_TYPE=single
+    export PGI_INSTALL_JAVA=true
+    export PGI_INSTALL_MPI=true
+    export PGI_MPI_GPU_SUPPORT=true
+    ./install
+
+    
+    yum install -y libcurl-devel zlib-devel
+
+	#### instal lhdf5 from source ####
+    # these are in /
+    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.21/src/hdf5-1.8.21.tar.gz
+    tar xzf hdf5-1.8.21.tar.gz
+    cd hdf5-1.8.21
+	export PATH=/opt/pgi/linux86-64/19.4/bin/:$PATH
+    #XX export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
+    export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf90 FCFLAGS="-g"
+    ## ./configure --prefix=/opt | tee configure.log
+    ./configure --prefix=/usr/local 2>&1 | tee configure.log # or does it produce a config.log by default now?
+    make install 2>&1 | tee make.install.log
+
+    #NetCDF, both C and fortran
+    wget https://github.com/Unidata/netcdf-c/archive/v4.7.0.tar.gz
+    tar -zxf v4.7.0.tar.gz
+    cd netcdf-c-4.7.0
+    #./configure --enable-remote-fortran-bootstrap 
+    ./configure --prefix=/usr/local  --enable-separate-fortran 2>&1 | tee configure.log
+    # ./configure --enable-remote-fortran-bootstrap --prefix=/opt  --enable-separate-fortran | tee configure.log
+    # it creates /opt/lib/libnetcdf.a... so better in /usr/local
+    # --enable-separate-fortran ## still dont see libnetcdff.a :(
+    #make
+    make install 2>&1 | tee make.install.log
+
+    wget https://github.com/Unidata/netcdf-fortran/archive/v4.4.5.tar.gz
+	# depends on netcdf-c  4.6.2 ...
+	tar xfz v4.4.5.tar.gz
+	cd netcdf-fortran-4.4.5/
+	#XX CC=pgcc FC=pgf95  ## use earlier export with full path
+	#XX export LT_SYS_LIBRARY_PATH=/opt/lib
+	#export LD_LIBRARY_PATH=/opt/lib:$LD_LIBRARY_PATH
+	#./configure --prefix=/opt | tee configure.log
+	export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+	./configure --prefix=/usr/local 2>&1 | tee configure.log
+	make install 2>&1 | tee make.install.log 
+
+    cd .. 
+
+    ##  Q for Ryan.  anything for libpnetcd.a ?  p = parallel version?
+
+	# container constructed from .def may not need this
+    # but i need it now for interactive compile of cmaq
+	echo "tin:x:43143:100:tin:/home/tin:/bin/bash" >> /etc/passwd
+	pwconv
+	chown -R 43143 /Downloads /opt
+	#mkdir -p /opt/CMAS4.5.1/rel
+	mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3
+	chown -R 43143 /opt/CMAS4.5.1
+		
+	mkdir -p /local/home/tin
+	chown -R 43143 /local/home/tin
+
+	#### cmaq ioapi ####
+    # for real container config, better wget source and tar xf..., maybe from my version of the repo with edit in place
+	# lot of messy work to get source code in right place, then compile
+    # may now have the right Makefile in my home dir/git repo, so maybe can git pull that for use with container?
+    # there is still the issue of Linux4 (mint) vs Linux3 (centos)...
+    # may not want to overwrite cmaq.img (from 0721e) once compile inside image works...
+
+	cd /local/home/tin
+	mkdir tin-gh && cd tin-gh
+	git clone https://github.com/tin6150/cmaq.git
+	git checkout 4.5.1
+	git log > git.log.out
+
+	# using content of bind mount home dir cuz lot of changes to Makefile, etc
+	# till those are checked in my own git, then container can then pull from there...
+	export BIN=`uname -s``uname -r | cut -d. -f1`
+	# export SNHOME=/Downloads			# -or-
+	# export SRCBASE=/Downloads			# -or-
+	# export SRCBASE=/local/home/tin/tin-gh    # as appropriate 
+	BASEDIR=$SRCBASE/cmaq/ioapi/ioapi  # source dir
+	#mkdir ${BASEDIR}/Linux4   #in git repo now
+	mkdir $BASEDIR/$BIN  > /dev/null 2>&1
+	mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3		# install destination?
+	cd $BASEDIR 	#cd cmaq/ioapi/ioapi
+	cp -p Makefile.pgi_container Makefile       # some edit done, now using pgf95
+	make HOME=/local/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
+	# only 1 file: /opt/CMAS4.5.1/rel/lib/ioapi_3/libioapi.a
+
+	#cd $HOME/tin-gh/cmaq/ioapi/bin
+	# ln -s /opt/lib/libnetcdf.a .
+	# ln ... libioapi.a
+
+	#### cmaq m3tools #####
+	export LD_LIBRARY_PATH=/opt/CMAS4.5.1/rel/lib/ioapi_3:$LD_LIBRARY_PATH
+	export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+    export PATH=/usr/local/bin:$PATH
+	##defined above## SRCBASE=/local/home/tin/tin-gh    
+	cd $SRCBASE/cmaq/ioapi/m3tools # cd $HOME/tin-gh/cmaq/ioapi/m3tools
+	cp -p Makefile.pgi_container Makefile
+	make         > make.log
+	make install > make.install.log
+
+	
+	
+
+		   
+%environment
+    export PGI=/opt/pgi
+    export PATH=/opt/pgi/linux86-64/19.4/bin:$PATH
+    export MANPATH=$MANPATH:/opt/pgi/linux86-64/19.4/man
+    export LM_LICENSE_FILE=$LM_LICENSE_FILE:/opt/pgi/license.dat
+	export LD_LIBRARY_PATH=/opt/pgi/linux86-64-llvm/19.4/lib:$LD_LIBRARY_PATH
+	#export CC=pgcc FC=pgf90 # pgc++ ...
+	export CC=/opt/pgi/linux86-64/19.4/bin/pgcc                FC=/opt/pgi/linux86-64/19.4/bin/pgf90 
+	#export CC=/opt/pgi/linux86-64/19.4/bin/pgcc                FC=/opt/pgi/linux86-64/19.4/bin/pgf95 
+	#export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
+    export PATH=/opt/bin:$PATH
+    export PATH=/usr/local/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/lib:$PATH
+
+%runscript
+    #pgcc $@
+    pgf90 $@
+    #pgf95 $@
+
+%help
+    Container containing PGI compilers
+    
+    Usage:
+
+        singularity exec <singularity image> <command> <args>
+
+    PGI commands include pgf77, pgfortran, pgcc, pgc++, pgdbg, and pgprof.
+    When using a PGI compiler, it is recommended to use statically link the PGI librarires using the -Bstatic_pgi command flag.
+
+    Example:
+
+        singularity exec <singularity image> pgcc -Bstatic_pgi <source.c>
+
+
+# vim: nosmartindent tabstop=4 noexpandtab shiftwidth=4
