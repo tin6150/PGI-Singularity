@@ -3,15 +3,17 @@ From: centos:7
 
 %post
     yum groupinstall -y "Development tools"
-    yum install -y wget which  csh tcsh zsh  cvs vim  bc tree 
+    yum install -y wget which  csh tcsh zsh  cvs vim  bc tree  
+	yum install -y tmux #screen
     # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
     # no fish shell yet in centos7?
 
-	  mkdir /Downloads  ##
-	  cd    /Downloads  ##
+	touch "_ROOT_DIR_OF_CONTAINER_" ##
+	mkdir /Downloads  ##
+	cd    /Downloads  ##
   
     curl -H 'Referer: https://www.pgroup.com/products/community.htm' -LO 'https://www.pgroup.com/support/downloader.php?file=pgi-community-linux-x64'
-    mv downloader.php?file=pgi-community-linux-x64 pgi.tgz   # this is in /
+    mv downloader.php?file=pgi-community-linux-x64 pgi.tgz   # this was in /
 
     #tar xpfz downloader.php?file=pgi-community-linux-x64
     tar xpfz pgi.tgz
@@ -28,11 +30,12 @@ From: centos:7
     
     yum install -y libcurl-devel zlib-devel
 
+	#### instal lhdf5 from source ####
     # these are in /
     wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.8/hdf5-1.8.21/src/hdf5-1.8.21.tar.gz
     tar xzf hdf5-1.8.21.tar.gz
     cd hdf5-1.8.21
-		export PATH=/opt/pgi/linux86-64/19.4/bin/:$PATH
+	export PATH=/opt/pgi/linux86-64/19.4/bin/:$PATH
     export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
     ## ./configure --prefix=/opt | tee configure.log
     ./configure --prefix=/usr/local
@@ -50,50 +53,77 @@ From: centos:7
     make install | tee make.install.log
 
     wget https://github.com/Unidata/netcdf-fortran/archive/v4.4.5.tar.gz
-		# depends on netcdf-c  4.6.2 ...
-		tar xfz v4.4.5.tar.gz
-		cd netcdf-fortran-4.4.5/
-		#XX CC=pgcc FC=pgf95  ## use earlier export with full path
-		#XX export LT_SYS_LIBRARY_PATH=/opt/lib
-		export LD_LIBRARY_PATH=/opt/lib:$LD_LIBRARY_PATH
-		./configure --prefix=/opt | tee configure.log
-    make install | tee make.install.log 
+	# depends on netcdf-c  4.6.2 ...
+	tar xfz v4.4.5.tar.gz
+	cd netcdf-fortran-4.4.5/
+	#XX CC=pgcc FC=pgf95  ## use earlier export with full path
+	#XX export LT_SYS_LIBRARY_PATH=/opt/lib
+	export LD_LIBRARY_PATH=/opt/lib:$LD_LIBRARY_PATH
+	./configure --prefix=/opt | tee configure.log
+	make install | tee make.install.log 
 
     cd .. 
 
     ##  Q for Ryan.  anything for libpnetcd.a ?  p = parallel version?
-    ## sure there is fortran version?  dont see a libnetcdff.a  extra f ... 
 
-		# container constructed from .def may not need this
+	# container constructed from .def may not need this
     # but i need it now for interactive compile of cmaq
-		echo "tin:x:43143:100:tin:/home/tin:/bin/bash" >> /etc/passwd
-	  pwconv
-		chown -R 43143 /Downloads /opt
-
-		mkdir -p /opt/CMAS4.5.1/rel
-		chown -R 43143 /opt/CMAS4.5.1
+	echo "tin:x:43143:100:tin:/home/tin:/bin/bash" >> /etc/passwd
+	pwconv
+	chown -R 43143 /Downloads /opt
+	mkdir -p /opt/CMAS4.5.1/rel
+	chown -R 43143 /opt/CMAS4.5.1
 		
-    # for real container config, better wget source and tar xf...
-		BASEDIR=/home/tin/tin-gh/cmaq/ioapi/ioapi  # source dir
-		#mkdir ${BASEDIR}/Linux4   #in git repo now
-		mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3
-    # lot of messy work to get source code in right place, then compile
+	#### ioapi ####
+    # for real container config, better wget source and tar xf..., maybe from my version of the repo with edit in place
+	# lot of messy work to get source code in right place, then compile
     # may now have the right Makefile in my home dir/git repo, so maybe can git pull that for use with container?
     # there is still the issue of Linux4 (mint) vs Linux3 (centos)...
     # may not want to overwrite cmaq.img (from 0721e) once compile inside image works...
-		
-    
+
+	# using content of bind mount home dir cuz lot of changes to Makefile, etc
+	# till those are checked in my own git, then container can then pull from there...
+	export BIN=`uname -s``uname -r | cut -d. -f1`
+	# export SNHOME=/Downloads			# -or-
+	# export SRCBASE=/Downloads			# -or-
+	# export SRCBASE=/home/tin/tin-gh   # as appropriate 
+	BASEDIR=/home/tin/tin-gh/cmaq/ioapi/ioapi  # source dir
+	#mkdir ${BASEDIR}/Linux4   #in git repo now
+	mkdir $BASEDIR/$BIN  > /dev/null 2>&1
+	mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3		# install destination?
+	cd cmaq/ioapi/ioapi
+	cp -p Makefile.pgi_container Makefile       # some edit done, now using pgf95
+	make HOME=/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
+	# only 1 file: /opt/CMAS4.5.1/rel/lib/ioapi_3/libioapi.a
+
+	#cd $HOME/tin-gh/cmaq/ioapi/bin
+	# ln -s /opt/lib/libnetcdf.a .
+	# ln ... libioapi.a
+
+	# m3tools
+	export LD_LIBRARY_PATH=/opt/CMAS4.5.1/rel/lib/ioapi_3:$LD_LIBRARY_PATH
+	export LD_LIBRARY_PATH=/opt/lib:$LD_LIBRARY_PATH
+    export PATH=/opt/bin:$PATH
+	cd $HOME/tin-gh/cmaq/ioapi/m3tools
+	
+	
+
+		   
 %environment
     export PGI=/opt/pgi
     export PATH=/opt/pgi/linux86-64/19.4/bin:$PATH
     export MANPATH=$MANPATH:/opt/pgi/linux86-64/19.4/man
     export LM_LICENSE_FILE=$LM_LICENSE_FILE:/opt/pgi/license.dat
-		export LD_LIBRARY_PATH=/opt/pgi/lib:$LD_LIBRARY_PATH
-		export CC=pgcc FC=pgf90 # pgc++ ...
+	export LD_LIBRARY_PATH=/opt/pgi/linux86-64-llvm/19.4/lib:$LD_LIBRARY_PATH
+	#export CC=pgcc FC=pgf90 # pgc++ ...
+	export CC=/opt/pgi/linux86-64/19.4/bin/pgcc                FC=/opt/pgi/linux86-64/19.4/bin/pgf95 
+	#export CC=/opt/pgi/linux86-64/19.4/bin/pgcc CCFLAGS="-g"   FC=/opt/pgi/linux86-64/19.4/bin/pgf95 FCFLAGS="-g"
+    export PATH=/opt/bin:$PATH
 
 %runscript
     #pgcc $@
-    pgf90 $@
+    #pgf90 $@
+    pgf95 $@
 
 %help
     Container containing PGI compilers
@@ -109,3 +139,5 @@ From: centos:7
 
         singularity exec <singularity image> pgcc -Bstatic_pgi <source.c>
 
+
+# vim: nosmartindent tabstop=4 noexpandtab shiftwidth=4
