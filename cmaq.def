@@ -10,8 +10,7 @@ From: centos:7
     # meld (in epel)  - https://centos.pkgs.org/7/epel-x86_64/meld-3.16.4-2.el7.noarch.rpm.html
     # no fish shell yet in centos7?
 
-	touch "/_ROOT_DIR_OF_CONTAINER_" ##
-	touch "_CURRENT_DIR_CONTAINER_BUILD" ##
+	touch "_ROOT_DIR_OF_CONTAINER_" ## also is "_CURRENT_DIR_CONTAINER_BUILD" 
 	mkdir /Downloads  ##
 	cd    /Downloads  ##
   
@@ -85,9 +84,14 @@ From: centos:7
 	mkdir -p /local/home/tin
 	chown -R 43143 /local/home/tin
 
+
+	exit 0
+	#### takes too long to debug build c0de below.
+	#### why is make install yield error?  didnt make?!
+
 	#### cmaq ioapi ####
     # for real container config, better wget source and tar xf..., maybe from my version of the repo with edit in place
-	# lot of messy work to get source code in right place, then compile
+	# lot of messy work to get source c0de in right place, then compile
     # may now have the right Makefile in my home dir/git repo, so maybe can git pull that for use with container?
     # there is still the issue of Linux4 (mint) vs Linux3 (centos)...
     # may not want to overwrite cmaq.img (from 0721e) once compile inside image works...
@@ -95,6 +99,7 @@ From: centos:7
 	cd /local/home/tin
 	mkdir tin-gh && cd tin-gh
 	git clone https://github.com/tin6150/cmaq.git
+	cd cmaq
 	git checkout 4.5.1
 	git log > git.log.out
 
@@ -103,14 +108,17 @@ From: centos:7
 	export BIN=`uname -s``uname -r | cut -d. -f1`
 	# export SNHOME=/Downloads			# -or-
 	# export SRCBASE=/Downloads			# -or-
-	# export SRCBASE=/local/home/tin/tin-gh    # as appropriate 
+	export SRCBASE=/local/home/tin/tin-gh    # as appropriate 
 	BASEDIR=$SRCBASE/cmaq/ioapi/ioapi  # source dir
 	#mkdir ${BASEDIR}/Linux4   #in git repo now
 	mkdir $BASEDIR/$BIN  > /dev/null 2>&1
 	mkdir -p /opt/CMAS4.5.1/rel/lib/ioapi_3		# install destination?
 	cd $BASEDIR 	#cd cmaq/ioapi/ioapi
 	cp -p Makefile.pgi_container Makefile       # some edit done, now using pgf95
-	make HOME=/local/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3/  install
+	HOME=/local/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3   make
+	echo $?
+	echo "done with make"
+	HOME=/local/home/tin/tin-gh/cmaq/ioapi  BIN=Linux4  INSTDIR=/opt/CMAS4.5.1/rel/lib/ioapi_3 make install
 	# only 1 file: /opt/CMAS4.5.1/rel/lib/ioapi_3/libioapi.a
 
 	#cd $HOME/tin-gh/cmaq/ioapi/bin
@@ -124,12 +132,17 @@ From: centos:7
 	##defined above## SRCBASE=/local/home/tin/tin-gh    
 	cd $SRCBASE/cmaq/ioapi/m3tools # cd $HOME/tin-gh/cmaq/ioapi/m3tools
 	cp -p Makefile.pgi_container Makefile
-	make         > make.log
-	make install > make.install.log
+	make         > make.log           2>&1
+	make install > make.install.log   2>&1
 
-	
+	cd
+	echo "last_line_of_post" >  container_build_done
+	echo "last_line_of_post" > /container_build_done
+	# singularity build get interrupted and result in no img whatsoever if there are errors with these mkdir or make commands :(
+	# building docker layers first would likely save time for development cycle.
 	
 
+	chown -R 43143 /local/home/tin
 		   
 %environment
     export PGI=/opt/pgi
